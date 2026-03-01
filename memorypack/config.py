@@ -32,3 +32,16 @@ class PipelineConfig:
     compression_target: float = 6.0  # target compression ratio
     output_format: str = "single"  # single | multi
     topic: str = "Knowledge Base"
+
+
+@dataclass
+class PruneConfig:
+    """Configuration for the prune command."""
+
+    max_tokens: int = 0  # 0 = no budget limit
+    min_importance: float = 0.0  # drop clusters below this score
+    similarity_threshold: float = 0.80  # cosine threshold for near-duplicate detection
+    merge_duplicates: bool = True  # merge near-duplicate clusters
+    dry_run: bool = False  # print plan without modifying
+    device: str = "cpu"  # cpu | cuda | mps
+    embedding_model: str = "all-MiniLM-L6-v2"

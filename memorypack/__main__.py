@@ -1,5 +1,5 @@
 """Allow running as `python -m memorypack`."""
 
-from memorypack.cli import main
+from memorypack.cli import cli
 
-main()
+cli()

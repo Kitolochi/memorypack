@@ -60,3 +60,15 @@ class PipelineResult:
     unique_chunks: int = 0
     duplicate_chunks: int = 0
     cluster_count: int = 0
+
+
+@dataclass
+class PruneResult:
+    """Result of a prune operation."""
+
+    output: TieredOutput
+    original_cluster_count: int = 0
+    pruned_cluster_count: int = 0
+    removed_labels: list[str] = field(default_factory=list)
+    merged_pairs: list[tuple[str, str]] = field(default_factory=list)
+    output_token_count: int = 0

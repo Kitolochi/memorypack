@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-memorypack = "memorypack.cli:main"
+memorypack = "memorypack.cli:cli"
 
 [tool.setuptools.packages.find]
 include = ["memorypack*"]

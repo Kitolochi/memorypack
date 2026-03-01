@@ -80,7 +80,12 @@ Summary paragraph about career-related content...
 
 ```bash
 pip install -e .
-memorypack ~/path/to/markdown/files -o compressed/
+```
+
+### `compress` — Build a knowledge base
+
+```bash
+memorypack compress ~/path/to/markdown/files -o compressed/
 ```
 
 Options:
@@ -91,6 +96,56 @@ Options:
 --compression-target FLOAT   Target compression ratio (default: 6.0)
 --chunk-size INT             Target tokens per chunk (default: 512)
 --topic STR                  Name for the output header
+```
+
+### `prune` — Shrink an existing knowledge base
+
+Remove low-value clusters, merge near-duplicates, or enforce a token budget on a previously compressed `knowledge_base.md`.
+
+```bash
+# Enforce a 1500-token budget
+memorypack prune compressed/knowledge_base.md --max-tokens 1500
+
+# Drop clusters scoring below 0.3 importance, write to a new file
+memorypack prune compressed/knowledge_base.md --min-importance 0.3 -o pruned.md
+
+# Preview what would be removed without writing
+memorypack prune compressed/knowledge_base.md --max-tokens 1000 --dry-run
+
+# Skip near-duplicate merging
+memorypack prune compressed/knowledge_base.md --max-tokens 1200 --no-merge
+```
+
+Options:
+```
+--max-tokens INT             Token budget (0 = no limit)
+--min-importance FLOAT       Drop clusters below this score [0-1]
+--similarity-threshold FLOAT Cosine threshold for duplicate detection (default: 0.80)
+--no-merge                   Disable near-duplicate merging
+--dry-run                    Print plan without writing
+--device [cpu|cuda|mps]      GPU acceleration
+-o, --output PATH            Output file (default: overwrite input)
+```
+
+### `watch` — Auto-recompress on file changes
+
+Poll a directory for `.md` changes and re-run compression automatically. Optionally auto-prune if output exceeds a token budget.
+
+```bash
+# Watch with 30-second interval, auto-prune at 2000 tokens
+memorypack watch ~/knowledge/ --interval 30 --token-budget 2000 -o compressed/
+
+# Watch with defaults (60s interval, no budget)
+memorypack watch ~/knowledge/
+```
+
+Options:
+```
+--interval INT               Polling interval in seconds (default: 60)
+--token-budget INT           Auto-prune threshold (0 = no limit)
+--device [cpu|cuda|mps]      GPU acceleration
+--topic STR                  Name for the output header
+-o, --output DIR             Output directory (default: "compressed")
 ```
 
 ## How It Fits Into a Larger System
