@@ -150,31 +150,51 @@ Options:
 
 ## How It Fits Into a Larger System
 
-memorypack produces static summaries. In a real app, you'd combine it with live vector search:
+memorypack produces static summaries. In a real app, you'd combine it with hybrid search — both semantic (vector) and full-text (BM25) — to get the best of both worlds:
 
 ```
 You ask: "How's my health progress?"
 
-Three things happen:
+Four things happen:
 
 1. COMPRESSED SUMMARIES (memorypack output)
    → Overview paragraph (always loaded, ~200 tokens)
    → Health cluster summary + facts (~150 tokens)
 
-2. VECTOR SEARCH (RAG)
-   → Embed your question
-   → Find the 5-8 most similar raw chunks
-   → But skip chunks that overlap with the summaries above
+2. HYBRID SEARCH (Vector + BM25)
+   → Vector: embed your question, find semantically similar chunks
+   → BM25: rank chunks by term frequency × inverse document frequency
+   → Merge both result lists via Reciprocal Rank Fusion (RRF, k=60)
+   → Skip chunks that overlap with the summaries above
 
-3. SCORED MEMORIES (separate system)
+3. CLAUDE CODE SESSION INDEX
+   → 968+ JSONL session files parsed and chunked
+   → Past decisions, conversations, and context are searchable
+   → Sessions indexed alongside memory files in both vector and BM25
+
+4. SCORED MEMORIES (separate system)
    → Short extracted facts from past conversations
    → Matched by keyword/topic relevance
 
-All three get stuffed into the LLM prompt.
+All four get stuffed into the LLM prompt.
 The summaries cover the broad picture cheaply.
-The raw chunks fill in specific details the summaries missed.
+Hybrid search fills in specifics — BM25 catches exact terms that
+  vector search misses, vector search catches meaning that BM25 misses.
+Session history surfaces past decisions and context.
 Nothing is lost — the originals are always one search away.
 ```
+
+### Why Hybrid Search?
+
+Each search method has blind spots:
+
+| Method | Good at | Misses |
+|--------|---------|--------|
+| **Vector (cosine)** | Semantic similarity, paraphrases, conceptual matches | Exact terms, rare proper nouns, specific numbers |
+| **BM25 (TF-IDF)** | Exact keyword matches, rare terms, specific names | Synonyms, paraphrases, conceptual queries |
+| **Hybrid (RRF)** | Both | Documents appearing in both lists get boosted scores |
+
+RRF merging is simple and effective: `score(doc) = Σ 1/(60 + rank_i(doc))`. A document ranked #1 in both lists scores higher than one ranked #1 in only one.
 
 ### Adaptive RAG Budget
 
@@ -189,6 +209,8 @@ When summaries match the question well (high cosine similarity between question 
 This saves 500-1,500 tokens per query without losing coverage.
 
 ## Architecture
+
+### Compression Pipeline (memorypack)
 
 ```
 ~/.claude/memory/
@@ -228,6 +250,22 @@ This saves 500-1,500 tokens per query without losing coverage.
        ▼
   compressed-knowledge.json
   (or knowledge_base.md)
+```
+
+### Search Pipeline (runtime integration)
+
+```
+~/.claude/memory/      ─── chunker ────┐
+(293 markdown files)                    │
+                                        ├── Chunk[] ──┬── LanceDB (vector, 384-dim)
+~/.claude/projects/    ─── session     │              │
+(968+ JSONL sessions)      parser ─────┘              └── MiniSearch (BM25, TF-IDF)
+                                                             │
+                                   search(query) ────────────┤
+                                   │  vector results ────────┤
+                                   │  BM25 results ──────────┤
+                                   │  RRF merge (k=60) ──────┘
+                                   └── SearchResult[] (unified interface)
 ```
 
 ## Key Parameters
